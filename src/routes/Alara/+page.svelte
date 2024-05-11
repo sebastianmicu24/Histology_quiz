@@ -141,14 +141,22 @@
 
         {@const checkAnswer = async () => {
             let message;
-            let risultato = "";
-    
-            if (rispostaData === rispostaCorretta) {
+            let risultato; // Declare risultato variable here
+        
+            if (rispostaData == data.domande[index_quiz-1].Risposta_corretta) {
                 risultato = "esatta";
-            } else if (rispostaData !== rispostaCorretta) {
+            } else {
                 risultato = "errata";
             }
-    
+            console.log(risultato, data.domande[index_quiz - 1].Risposta_corretta, rispostaData)
+            return risultato;
+            
+        }}
+        
+        {@const insertData = async () => {
+            // Call checkAnswer function properly and wait for its completion
+            const risultato = await checkAnswer();
+            
             const { data, error } = await supabase
                 .from("domande")
                 .upsert(
@@ -162,30 +170,25 @@
                     { onConflict: ["histo_id"] },
                 )
                 .select();  
-               
         }}
-     
-    
+        
         {@const updateIndex = async () => {
-            
-                const { data, error, status } = await supabase
-                    .from('domande')
-                    .upsert([{ 
-                        histo_id: 1,
-                        index_quiz: index_quiz 
-                    }])
-                    .match({ index_quiz: 1 })
-                    .select();       
+            const { data, error, status } = await supabase
+                .from('domande')
+                .upsert([{ 
+                    histo_id: 1,
+                    index_quiz: index_quiz 
+                }])
+                .match({ index_quiz: 1 })
+                .select();       
         }}
-    
-    
-    
-        {@const submit = () => {
-            checkAnswer();
+        
+        {@const submit = async () => { // Make the submit function async
+        
+            await insertData(); // Await insertData to ensure completion before proceeding
             updateIndex();
             location.reload();
         }}
-
         <button class="btn variant-filled-primary" id="dark-primary" on:click={decreaseIndex}
             >←</button
         >

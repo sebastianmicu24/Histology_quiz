@@ -1,8 +1,8 @@
 <script>
-    import { supabase } from "$lib/supabaseClient";
-    import { load } from "./+page.js";
     export let data;
-
+    import { supabase } from "$lib/supabaseClient";
+    import  {browser} from '$app/environment'
+    
     let index_quiz = data.domande[0].index_quiz;
     let rispostaData = "NULL";
     let rispostaCorretta = data.domande[index_quiz - 1].Risposta_corretta;
@@ -11,26 +11,31 @@
         rispostaData = event.target.id;
     }
 
-    let risultato = data.domande[index_quiz - 1].esatta_errata;
+    let risultato = data.domande[index_quiz - 1].risultato_danilo;
 
     
     const increaseIndex = () => {
         index_quiz++;
-        risultato = data.domande[index_quiz - 1].esatta_errata;
+        risultato = data.domande[index_quiz - 1].risultato_danilo;
 
-        console.log(risultato);
+     
     };
 
     const decreaseIndex = () => {
         if (index_quiz > 1) {
             index_quiz--;
         }
-        load();
-        risultato = data.domande[index_quiz - 1].esatta_errata;
-        console.log(risultato);
+       
+        risultato = data.domande[index_quiz - 1].risultato_danilo;
+       
     };
 </script>
 
+{#if !browser}
+<div class="load_container">
+<div class="lds-dual-ring"></div>
+</div>
+{:else}
 <br />
 <div class="container">
 {#each data.domande as domanda}
@@ -130,7 +135,7 @@
         <button
             style="margin-left:20px"
             class="btn variant-filled-primary"
-            id="dark-primary"
+            id={`submit_${risultato}`}
             on:click={submit}>Rispondi</button
         >
 
@@ -138,9 +143,9 @@
             let message;
             let risultato = "";
     
-            if (rispostaData === rispostaCorretta) {
+            if (rispostaData === data.domande[index_quiz-1].Risposta_corretta) {
                 risultato = "esatta";
-            } else if (rispostaData !== rispostaCorretta) {
+            } else {
                 risultato = "errata";
             }
     
@@ -150,8 +155,8 @@
                     [
                         {
                             histo_id: index_quiz,
-                            esatta_errata: risultato,
-                            risposta_alara: rispostaData,
+                            risultato_danilo: risultato,
+                            risposta_danilo: rispostaData,
                         },
                     ],
                     { onConflict: ["histo_id"] },
@@ -162,7 +167,7 @@
      
     
         {@const updateIndex = async () => {
-            try {
+            
                 const { data, error, status } = await supabase
                     .from('domande')
                     .upsert([{ 
@@ -170,19 +175,7 @@
                         index_quiz: index_quiz 
                     }])
                     .match({ index_quiz: 1 })
-                    .select();
-                
-                console.log("Response data:", data);
-                console.log("Response status:", status);
-        
-                if (error) {
-                    console.error("Error:", error.message);
-                } else {
-                    console.log("Upsert operation successful");
-                }
-            } catch (error) {
-                console.error("Error performing upsert:", error.message);
-            }
+                    .select();       
         }}
     
     
@@ -201,18 +194,20 @@
         >
 
         <br /> <br />
+        <div class="AnswerMessage" id='Soluzione_{risultato}'>La risposta corretta era la <b>{data.domande[index_quiz-1].Risposta_corretta}</b>, tu hai selezionato la <b>{data.domande[index_quiz-1].risposta_danilo}</b><br><hr>{@html data.domande[index_quiz-1].html_content}</div>
     {/if}
 {/each}
 
-<div id="AnswerMessage"></div>
-
 <br />
+
+
+
 <div class="buttons">
     {#each data.domande as domanda}
         {#if domanda.histo_id <= 50}
             <button
                 class="btn variant-filled-soft"
-                id={`Index_Number_${data.domande[domanda.histo_id-1].esatta_errata}`}
+                id={`Index_Number_${data.domande[domanda.histo_id-1].risultato_danilo}`}
                 name={domanda.histo_id}
                 on:click={chooseIndex}>{domanda.histo_id}</button
             >
@@ -220,14 +215,15 @@
                 {
                     index_quiz = domanda.histo_id;
                 }
-                console.log(domanda.histo_id, index_quiz);
+              
+                risultato = data.domande[index_quiz - 1].risultato_danilo;
             }}
         {/if}
     {/each}
 </div>
 </div>
 
-
+{/if}
 
 <style>
     @import "tailwindcss/base";
@@ -259,10 +255,12 @@
 
     #Risposta_esatta {
         @apply bg-success-900;
+        pointer-events: none;
     }
 
     #Risposta_errata {
         @apply bg-primary-800;
+        pointer-events: none;
     }
 
     input[type="radio"] {
@@ -326,12 +324,23 @@
 
     #dark-primary {
         @apply bg-primary-900;
+        font-size: larger;
     }
 
-    #unclickable {
+    #submit_null {
+        @apply bg-primary-900;
+    }
+
+    #submit_esatta {
         @apply bg-primary-900;
         pointer-events: none;
     }
+    #submit_errata {
+        @apply bg-primary-900;
+        pointer-events: none;
+    }
+
+   
 
     #unclickable:clicked {
         @apply bg-primary-900;
@@ -360,7 +369,22 @@
         width: 30px;
     }
 
-    #AnswerMessage {
+
+
+    #highlight-green {
+        @apply bg-success-900;
+        pointer-events: none;
+    }
+
+    #highlight-red {
+        @apply bg-primary-700;
+    }
+
+    #Soluzione_null{
+        display: none !important;
+    }
+
+    .AnswerMessage {
         border: solid 2px rgb(0, 0, 0);
         border-collapse: collapse;
         min-height: 100px;
@@ -382,20 +406,43 @@
         min-width: 80%;
     }
 
-    #highlight-green {
-        @apply bg-success-900;
-        pointer-events: none;
-    }
+    
+.lds-dual-ring,
+.lds-dual-ring:after {
+  box-sizing: border-box;
+}
+.lds-dual-ring {
+  display: inline-block;
+  width: 80px;
+  height: 80px;
+  margin-top: 100px;
+}
+.lds-dual-ring:after {
+  content: " ";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border-radius: 50%;
+  border: 6.4px solid currentColor;
+  border-color: currentColor transparent currentColor transparent;
+  animation: lds-dual-ring 1.2s linear infinite;
+}
+@keyframes lds-dual-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 
-    #highlight-red {
-        @apply bg-primary-700;
-    }
+.load_container{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0px;
+}
 
-    li {
-        list-style-type: circle !important; /* Remove default bullet points */
-        display: block; /* Display as block elements */
-        margin: 0; /* Remove default margin */
-        padding: 0; /* Remove default padding */
-    }
     
 </style>
